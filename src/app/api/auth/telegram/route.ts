@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
 
   const initData = typeof body.initData === "string" ? body.initData : "";
   const botToken = process.env.TELEGRAM_BOT_TOKEN ?? "";
-  const allowDemo = process.env.ALLOW_DEMO_AUTH !== "false";
+  // Secure by default: demo auth requires an explicit opt-in. Any unset,
+  // mistyped or differently-cased value keeps the anonymous login path closed.
+  const allowDemo = (process.env.ALLOW_DEMO_AUTH ?? "").trim().toLowerCase() === "true";
   const maxAge = Number(process.env.TELEGRAM_AUTH_MAX_AGE ?? "300");
 
   let payload: TelegramUserPayload | null = null;
