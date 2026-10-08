@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-vazir), "Vazirmatn", Tahoma, Arial, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+body {
+  overscroll-behavior-y: contain;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(13 148 136 / 0.25);
+}
+
+/* Hide scrollbars but keep scrollability */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* iOS / Telegram safe areas */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Sheet + overlay motion */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes nowline {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.animate-sheet-up { animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.animate-fade-in { animation: fade-in 0.25s ease both; }
+.animate-scale-in { animation: scale-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.animate-toast-in { animation: toast-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.animate-nowline { animation: nowline 2.4s ease-in-out infinite; }
+
+.skeleton {
+  border-radius: 0.75rem;
+  background-image: linear-gradient(90deg, rgb(148 163 184 / 0.16) 25%, rgb(148 163 184 / 0.32) 37%, rgb(148 163 184 / 0.16) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.dark .skeleton {
+  background-image: linear-gradient(90deg, rgb(100 116 139 / 0.14) 25%, rgb(100 116 139 / 0.30) 37%, rgb(100 116 139 / 0.14) 63%);
+}
+
+/* Hatched background for unavailable blocks */
+.hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 7px,
+    rgb(100 116 139 / 0.14) 7px,
+    rgb(100 116 139 / 0.14) 9px
+  );
+}
+.dark .hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 7px,
+    rgb(148 163 184 / 0.10) 7px,
+    rgb(148 163 184 / 0.10) 9px
+  );
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Native select appearance tuning */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+}
