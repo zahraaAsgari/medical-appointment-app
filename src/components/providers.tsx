@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { AlertTriangle, CheckCircle2, RefreshCcw, Send } from "lucide-react";
 import { api } from "@/lib/api";
 import { hapticImpact, hapticNotify, twa } from "@/lib/twa";
-import type { AppointmentDTO, ClinicDTO, PatientDTO, UserDTO } from "@/lib/types";
+import type { AppointmentDTO, ClinicDTO, PatientDTO, UnavailableDTO, UserDTO } from "@/lib/types";
 import { Button, cn, Spinner } from "@/components/ui";
 import { Sheet } from "@/components/ui";
 import {
@@ -21,7 +21,7 @@ import { JalaliDatePicker } from "@/components/date-picker";
 export type SheetState =
   | { type: "appointmentForm"; preset?: { date?: string; startTime?: string; patientId?: number } }
   | { type: "appointmentDetail"; appointmentId: number }
-  | { type: "blockTime"; presetDate?: string }
+  | { type: "blockTime"; presetDate?: string; slot?: UnavailableDTO }
   | { type: "patientForm"; patient?: PatientDTO }
   | { type: "patientDetail"; patientId: number }
   | null;
@@ -305,7 +305,7 @@ function SheetHost() {
     case "appointmentDetail":
       return <AppointmentDetailSheet appointmentId={sheet.appointmentId} onClose={closeSheet} />;
     case "blockTime":
-      return <BlockTimeSheet presetDate={sheet.presetDate} onClose={closeSheet} />;
+      return <BlockTimeSheet presetDate={sheet.presetDate} slot={sheet.slot} onClose={closeSheet} />;
     case "patientForm":
       return <PatientFormSheet patient={sheet.patient} onClose={closeSheet} />;
     case "patientDetail":

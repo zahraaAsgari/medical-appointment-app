@@ -246,7 +246,7 @@ function Timeline({
           return (
             <button
               key={u.id}
-              onClick={() => openSheet({ type: "blockTime", presetDate: date })}
+              onClick={() => openSheet({ type: "blockTime", presetDate: date, slot: u })}
               className="hatch absolute z-[5] overflow-hidden rounded-xl border border-slate-200 bg-slate-50/90 px-2 dark:border-slate-700 dark:bg-slate-800/60"
               style={{ top: v, height: Math.max(vH, 18), right: LABEL_W + 6, left: 2 }}
             >

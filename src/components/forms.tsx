@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarClock,
   CalendarPlus,
@@ -9,6 +9,7 @@ import {
   Clock,
   FileText,
   Phone,
+  RefreshCw,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -550,8 +551,16 @@ function RescheduleBlock({ appt, onDone }: { appt: AppointmentDTO; onDone: () =>
 
 /* ---------------------------- block time sheet ------------------------------ */
 
-export function BlockTimeSheet({ presetDate, onClose }: { presetDate?: string; onClose: () => void }) {
-  const { bump, toast } = useApp();
+export function BlockTimeSheet({
+  presetDate,
+  slot,
+  onClose,
+}: {
+  presetDate?: string;
+  slot?: UnavailableDTO;
+  onClose: () => void;
+}) {
+  const { bump, toast, dataVersion } = useApp();
   const [date, setDate] = useState(presetDate ?? todayISO());
   const [fullDay, setFullDay] = useState(false);
   const [start, setStart] = useState("12:00");
@@ -560,6 +569,60 @@ export function BlockTimeSheet({ presetDate, onClose }: { presetDate?: string; o
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ message: string; detail?: string } | null>(null);
+
+  // Existing blocks (today onward), so the user can review and remove them.
+  const [slots, setSlots] = useState<UnavailableDTO[] | null>(null);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const loadSlots = useCallback(async () => {
+    // Supersede any in-flight request so a stale response can never win.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setSlotsError(null);
+    try {
+      const res = await api<{ unavailable: UnavailableDTO[] }>(`/api/unavailable?from=${todayISO()}`, {
+        signal: controller.signal,
+      });
+      setSlots(res.unavailable);
+    } catch {
+      // Aborted (unmounted or superseded): keep the current state silently.
+      if (controller.signal.aborted) return;
+      setSlotsError("دریافت فهرست مسدودی‌ها ناموفق بود.");
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void loadSlots();
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      // Unmount or a dataVersion change: cancel whatever is still in flight.
+      abortRef.current?.abort();
+    };
+  }, [loadSlots, dataVersion]);
+
+  const doDelete = async (id: number) => {
+    if (deletingId !== null) return;
+    setDeletingId(id);
+    try {
+      await api(`/api/unavailable/${id}`, { method: "DELETE" });
+      toast("مسدودی حذف شد و زمان آزاد گردید");
+      setPendingDelete(null);
+      // bump() refreshes the Home timeline and reloads this list via dataVersion.
+      bump();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "حذف مسدودی ناموفق بود", "error");
+      hapticNotify("error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const submit = async () => {
     setBusy(true);
@@ -624,6 +687,82 @@ export function BlockTimeSheet({ presetDate, onClose }: { presetDate?: string; o
         <Button size="lg" className="w-full" variant="dangerSoft" disabled={!valid || busy} loading={busy} onClick={submit}>
           مسدود کردن {fullDay ? "کل روز" : `${faTime(start)} تا ${faTime(end)}`}
         </Button>
+
+        {/* Existing blocks: today onward, with delete */}
+        <div className="pt-2">
+          <SectionLabel>مسدودی‌های فعال ({slots === null ? "…" : fa(slots.length)})</SectionLabel>
+
+          {slotsError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+              {slotsError}
+              <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => void loadSlots()}>
+                <RefreshCw className="size-4" /> تلاش مجدد
+              </Button>
+            </div>
+          ) : slots === null ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-2xl" />
+              <Skeleton className="h-14 w-full rounded-2xl" />
+            </div>
+          ) : slots.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-3.5 text-center text-[12px] font-semibold text-slate-400 dark:border-slate-800">
+              مسدودی فعالی ثبت نشده است
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {slots.map((s) => (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "rounded-2xl border p-3 dark:border-slate-800",
+                    slot?.id === s.id
+                      ? "border-teal-400 bg-teal-50/60 dark:border-teal-500/40 dark:bg-teal-500/10"
+                      : "border-slate-100 bg-white dark:bg-slate-900",
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-extrabold text-slate-800 dark:text-slate-100">
+                        {relativeDayLabel(s.date)}
+                      </p>
+                      <p className="mt-0.5 text-[11.5px] font-bold text-teal-700 dark:text-teal-300">
+                        {s.isFullDay ? "کل روز" : `${faTime(s.startTime)} تا ${faTime(s.endTime)}`}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11.5px] text-slate-500 dark:text-slate-400">
+                        {s.reason}
+                        {s.reasonCategory && REASON_LABEL[s.reasonCategory] ? ` — ${REASON_LABEL[s.reasonCategory]}` : ""}
+                      </p>
+                    </div>
+                    {pendingDelete === s.id ? (
+                      <div className="flex shrink-0 gap-1.5">
+                        <Button size="sm" variant="ghost" onClick={() => setPendingDelete(null)} disabled={deletingId !== null}>
+                          خیر
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          loading={deletingId === s.id}
+                          disabled={deletingId !== null}
+                          onClick={() => void doDelete(s.id)}
+                        >
+                          حذف
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setPendingDelete(s.id)}
+                        aria-label={`حذف مسدودی ${s.reason}`}
+                        className="grid size-9 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-500 transition-all hover:bg-rose-100 active:scale-95 dark:bg-rose-500/10 dark:text-rose-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Sheet>
   );
