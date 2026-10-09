@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, RefreshCcw, Send } from "lucide-react";
 import { api } from "@/lib/api";
-import { hapticImpact, hapticNotify, twa } from "@/lib/twa";
+import { hapticImpact, hapticNotify, twa, type TelegramWebApp } from "@/lib/twa";
 import type { AppointmentDTO, ClinicDTO, PatientDTO, UnavailableDTO, UserDTO } from "@/lib/types";
 import { Button, cn, Spinner } from "@/components/ui";
 import { Sheet } from "@/components/ui";
@@ -57,12 +57,38 @@ export function useApp(): AppContextValue {
   return ctx;
 }
 
-/** Network/5xx failures are worth an automatic retry; auth 4xx are not. */
-function isTransientError(err: unknown): boolean {
-  if (!(err instanceof Error)) return true;
-  const status = (err as { status?: number }).status;
-  if (!status) return true; // fetch/abort/socket failure
-  return status >= 500;
+/**
+ * Waits until the Telegram WebApp SDK is available on `window`.
+ *
+ * `telegram-web-app.js` loads with `strategy="afterInteractive"`, so it may not
+ * be present when the boot effect first runs. Reading `initData` too early
+ * yields an empty string, which the backend must reject. Waiting here removes
+ * that race without weakening validation or retrying authentication blindly.
+ *
+ * Resolves early (null) outside Telegram or after a bounded timeout so the app
+ * never hangs on a platform that will never provide the SDK.
+ */
+function waitForTelegramSDK(timeoutMs = 4000): Promise<TelegramWebApp | null> {
+  return new Promise((resolve) => {
+    const immediate = twa();
+    if (immediate) {
+      resolve(immediate);
+      return;
+    }
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      const tg = twa();
+      if (tg) {
+        clearInterval(timer);
+        resolve(tg);
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, 100);
+  });
 }
 
 /* ------------------------------- Main button -------------------------------- */
@@ -178,9 +204,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
+        // The SDK script is not guaranteed to be loaded when this effect first
+        // runs. Waiting for it (bounded) means initData is read once it exists,
+        // instead of sending an empty string that the backend must reject.
+        const ready = (await waitForTelegramSDK()) ?? tg;
         const res = await api<{ user: UserDTO; isDemo: boolean }>("/api/auth/telegram", {
           method: "POST",
-          body: JSON.stringify({ initData: tg?.initData ?? "" }),
+          body: JSON.stringify({ initData: ready?.initData ?? "" }),
           signal: controller.signal,
         });
         setUser(res.user);

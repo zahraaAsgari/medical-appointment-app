@@ -176,7 +176,17 @@ export function AppointmentFormSheet({
   useMainButton("ثبت نوبت", submit, true);
 
   return (
-    <Sheet open onClose={onClose} title="نوبت جدید">
+    <Sheet
+      open
+      onClose={onClose}
+      title="نوبت جدید"
+      footer={
+        <Button size="lg" className="w-full" loading={busy} disabled={!canSubmit} onClick={submit}>
+          <CalendarPlus className="size-5" />
+          ثبت نوبت — {formatDate(date)} ساعت {faTime(startTime)}
+        </Button>
+      }
+    >
       <div className="space-y-4">
         <FormError message={err?.message ?? null} detail={err?.detail} />
 
@@ -258,11 +268,6 @@ export function AppointmentFormSheet({
         <Field label="یادداشت" optional>
           <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="یادداشت برای پذیرش یا پزشک…" maxLength={1000} />
         </Field>
-
-        <Button size="lg" className="w-full" loading={busy} disabled={!canSubmit} onClick={submit}>
-          <CalendarPlus className="size-5" />
-          ثبت نوبت — {formatDate(date)} ساعت {faTime(startTime)}
-        </Button>
       </div>
     </Sheet>
   );
@@ -654,7 +659,16 @@ export function BlockTimeSheet({
   const valid = fullDay || toMin(start) < toMin(end);
 
   return (
-    <Sheet open onClose={onClose} title="ثبت عدم حضور / مسدودی">
+    <Sheet
+      open
+      onClose={onClose}
+      title="ثبت عدم حضور / مسدودی"
+      footer={
+        <Button size="lg" className="w-full" variant="dangerSoft" disabled={!valid || busy} loading={busy} onClick={submit}>
+          مسدود کردن {fullDay ? "کل روز" : `${faTime(start)} تا ${faTime(end)}`}
+        </Button>
+      }
+    >
       <div className="space-y-4">
         <FormError message={err?.message ?? null} detail={err?.detail} />
         <Field label="تاریخ">
@@ -684,9 +698,6 @@ export function BlockTimeSheet({
         <Field label="توضیح" optional>
           <TextInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder={REASON_LABEL[category]} maxLength={200} />
         </Field>
-        <Button size="lg" className="w-full" variant="dangerSoft" disabled={!valid || busy} loading={busy} onClick={submit}>
-          مسدود کردن {fullDay ? "کل روز" : `${faTime(start)} تا ${faTime(end)}`}
-        </Button>
 
         {/* Existing blocks: today onward, with delete */}
         <div className="pt-2">
@@ -804,7 +815,18 @@ export function PatientFormSheet({ patient, onClose }: { patient?: PatientDTO; o
   const canSubmit = fullName.trim().length > 0 && mobile.trim().length >= 8 && !busy;
 
   return (
-    <Sheet open onClose={onClose} title={editing ? "ویرایش بیمار" : "بیمار جدید"}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={editing ? "ویرایش بیمار" : "بیمار جدید"}
+      footer={
+        /* Rendered outside the scroll container so the submit action stays
+           visible above Telegram's bottom interface and the mobile keyboard. */
+        <Button size="lg" className="w-full" disabled={!canSubmit} loading={busy} onClick={submit}>
+          {editing ? "ذخیره تغییرات" : "ثبت بیمار"}
+        </Button>
+      }
+    >
       <div className="space-y-4">
         <FormError message={err} />
         <Field label="نام و نام خانوادگی">
@@ -824,9 +846,6 @@ export function PatientFormSheet({ patient, onClose }: { patient?: PatientDTO; o
         <Field label="یادداشت کوتاه" optional>
           <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً حساسیت دارویی یا نکته مهم برای پذیرش…" maxLength={2000} />
         </Field>
-        <Button size="lg" className="w-full" disabled={!canSubmit} loading={busy} onClick={submit}>
-          {editing ? "ذخیره تغییرات" : "ثبت بیمار"}
-        </Button>
       </div>
     </Sheet>
   );

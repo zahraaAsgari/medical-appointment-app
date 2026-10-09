@@ -287,7 +287,9 @@ export function Sheet({
         aria-modal="true"
         style={{ transform: `translateY(${dragY}px)`, transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.32,0.72,0,1)" }}
         className={cn(
-          "relative flex max-h-[92dvh] w-full max-w-md flex-col rounded-t-[1.75rem] bg-white shadow-2xl dark:bg-slate-900",
+          // dvh tracks the visual viewport, so the sheet shrinks with the mobile
+          // keyboard instead of keeping the submit button out of view.
+          "relative flex max-h-[88dvh] w-full max-w-md flex-col rounded-t-[1.75rem] bg-white shadow-2xl dark:bg-slate-900",
           open ? "animate-sheet-up" : "translate-y-full",
         )}
       >
@@ -306,8 +308,12 @@ export function Sheet({
             </button>
           </div>
         )}
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-6">{children}</div>
-        {footer && <div className="pb-safe shrink-0 border-t border-slate-100 bg-white/90 px-5 py-3.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">{footer}</div>}
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">{children}</div>
+        {footer && (
+          <div className="shrink-0 border-t border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95" style={{ paddingBottom: "calc(0.875rem + env(safe-area-inset-bottom, 0px))" }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
